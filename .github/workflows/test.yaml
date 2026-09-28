@@ -1,0 +1,51 @@
+name: Windows (Direct3D12)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Compile ArmorPaint
+        shell: cmd
+        run: |
+          cd paint
+          ..\base\make --compile
+
+      - name: Prepare Release Bundle
+        shell: cmd
+        run: |
+          mkdir dist
+          
+          :: Exe dosyasını topla (bulunduğu dizinden dist klasörüne kopyalar)
+          for /r paint\build %%f in (ArmorPaint.exe) do @copy /y "%%f" dist\
+          for /r build %%f in (ArmorPaint.exe) do @copy /y "%%f" dist\
+          
+          :: Uygulamanın çökmemesi için gerekli data klasörünü kopyala
+          if exist paint\data (
+            xcopy /E /I /Y paint\data dist\data
+          ) else if exist data (
+            xcopy /E /I /Y data dist\data
+          )
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArmorPaint-Windows-x64
+          path: dist/
